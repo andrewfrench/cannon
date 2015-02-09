@@ -7,8 +7,9 @@
 // Define I/O pins, user/token strings, and other constants
 #define MOTOR_OUTPUT        0
 #define WIFI_CONN_MAX_TRIES 10
-#define THINGFABRIC_USER    ""
-#define THINGFABRIC_TOKEN   ""
+#define MQTT_CONN_MAX_TRIES 10
+#define THINGFABRIC_USER    "62a2c37b-5729-41d0-b4ac-68ea0761bf6a"
+#define THINGFABRIC_TOKEN   "cf68c61d43b1c24d100c995ef5b0a373"
 
 // Store WiFi credentials
 char * ssid = "2lemetry";
@@ -28,7 +29,8 @@ void setup() {
   // Initialize motor output pins
 
   // Initialize serial communications
-  Serial.begin(9600);
+  Serial.begin(115200);
+  delay(1000);
   Serial.println("IoT Marshmallow Cannon");
   Serial.println("  Heading controller  ");
 
@@ -61,11 +63,11 @@ void wifi_connect() {
 
     wifi_status = WiFi.begin(ssid, pass);
 
-    // Delay 10s = 10000ms for network connection
-    delay(10 * 1000);
+    // Delay 2s = 10000ms for network connection
+    delay(2 * 1000);
 
     // Increment connection attempt counter
-    wifi_tries++;
+    wifi_conn_tries++;
   }
 
   if(wifi_conn_tries == WIFI_CONN_MAX_TRIES) {
@@ -79,19 +81,34 @@ void wifi_connect() {
   // Confirm WiFi connection, print local IP
   Serial.println("Connection successful!");
   Serial.print("IP Address: ");
-  Serial.println(Wifi.localIP());
+  Serial.println(WiFi.localIP());
 }
 
 void mqtt_connect() {
   Serial.print("Attempting to establish MQTT connection as: ");
   Serial.println(device_id);
 
-  if(client.connect(device_id, THINGFABRIC_USER, THINGFABRIC_TOKEN)) {
-    // MQTT connection succeeded
-    Serial.println("MQTT connection successful!");
-  } else {
-    // MQTT connection failed
-    Serial.println("MQTT connection failed!");
+  int mqtt_conn_tries = 0;
+
+  while(!client.connected() && mqtt_conn_tries < MQTT_CONN_MAX_TRIES) {
+    if(!client.connect(device_id, THINGFABRIC_USER, THINGFABRIC_TOKEN)) {
+      // MQTT connection succeeded
+      Serial.println("MQTT connection successful!");
+
+      client.publish("public/test/arduino", "hello, world!");
+
+      break;
+    } else {
+      // MQTT connection failed
+      Serial.println("MQTT connection failed.  Trying again...");
+    }
+
+    mqtt_conn_tries++;
+  }
+
+  if(mqtt_conn_tries == MQTT_CONN_MAX_TRIES) {
+    Serial.println("MQTT connection failed permanently!");
+    Serial.println("(Max connection attempts reached)");
 
     // Hang out in here forever
     while(true);
@@ -101,5 +118,5 @@ void mqtt_connect() {
 void message_arrived(char * topic, byte * payload, unsigned int length) {
   // Parse this message and act accordingly
   Serial.println("Message arrived!");
-  Serial.println(payload);
+  Serial.write(payload, length);
 }
