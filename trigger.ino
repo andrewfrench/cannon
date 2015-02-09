@@ -1,6 +1,11 @@
 // Controlling the cannon's trigger
 
+#include <WiFi.h>
 #include <PubSubClient.h>
+
+// Define I/O pins
+#define TRIGGER_PIN 0
+#define SENSOR_PIN  0
 
 void setup() {
   // Initialize trigger output pins
