@@ -1,15 +1,16 @@
 // Controlling the cannon's heading
 
+#include <SPI.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <stepper.h>
+// #include <stepper.h>
 
 // Define I/O pins, user/token strings, and other constants
 #define MOTOR_OUTPUT        0
 #define WIFI_CONN_MAX_TRIES 10
 #define MQTT_CONN_MAX_TRIES 10
-#define THINGFABRIC_USER    "62a2c37b-5729-41d0-b4ac-68ea0761bf6a"
-#define THINGFABRIC_TOKEN   "cf68c61d43b1c24d100c995ef5b0a373"
+#define THINGFABRIC_USER    "6fa86650-c65f-4c20-bf25-39048880c2d8"
+#define THINGFABRIC_TOKEN   "60a1b9a5b67a393e49544c5761d7bca5"
 
 // Store WiFi credentials
 char * ssid = "2lemetry";
@@ -18,7 +19,7 @@ char * device_id = "cannon-heading";
 
 // Create client handles in global scope
 WiFiClient wifi_client;
-PubSubClient client("q.thingfabric.com", 1883, message_arrived, wifi_client);
+PubSubClient mqtt_client;
 
 // Function prototypes
 void wifi_connect();
@@ -30,7 +31,7 @@ void setup() {
 
   // Initialize serial communications
   Serial.begin(115200);
-  delay(1000);
+  delay(3000);
   Serial.println("IoT Marshmallow Cannon");
   Serial.println("  Heading controller  ");
 
@@ -38,18 +39,20 @@ void setup() {
   wifi_connect();
 
   // Initialize MQTT Client
+  mqtt_client = PubSubClient("q.m2m.io", 1883, message_arrived, wifi_client, Serial);
   mqtt_connect();
 
 }
 
 void loop() {
   // Continuously listen for relevant MQTT message
+  mqtt_client.loop();
 
   // When message is received, parse for command
 
   // If command is valid, turn to requested heading
 
-  // When complete, send MQTT message indicating success
+  // When (if) complete, send MQTT message indicating success (or failure)
 
 }
 
@@ -82,6 +85,8 @@ void wifi_connect() {
   Serial.println("Connection successful!");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
+
+  delay(1000);
 }
 
 void mqtt_connect() {
@@ -90,12 +95,12 @@ void mqtt_connect() {
 
   int mqtt_conn_tries = 0;
 
-  while(!client.connected() && mqtt_conn_tries < MQTT_CONN_MAX_TRIES) {
-    if(!client.connect(device_id, THINGFABRIC_USER, THINGFABRIC_TOKEN)) {
+  while(!mqtt_client.connected() && mqtt_conn_tries < MQTT_CONN_MAX_TRIES) {
+    if(mqtt_client.connect(device_id, THINGFABRIC_USER, THINGFABRIC_TOKEN)) {
       // MQTT connection succeeded
       Serial.println("MQTT connection successful!");
 
-      client.publish("public/test/arduino", "hello, world!");
+      mqtt_client.publish("public/test/cannon", "hello, world!");
 
       break;
     } else {
